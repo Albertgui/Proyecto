@@ -5,6 +5,7 @@ const path = require('path')
 const bcrypt = require('bcryptjs');
 const morgan = require('morgan');
 const mysqlConection = require('./database');
+const fs = require('fs').promises;
 
 const app = express();
 
@@ -35,6 +36,45 @@ const storage = multer.diskStorage({
 
 const upload = multer({storage});
 
+// Mostrar las imágenes
+
+app.get('/upload', (req, res) =>{
+
+    mysqlConection.query('SELECT * from files', (err, rows, fileds) => {
+
+        if (!err) {
+
+            res.json(rows);
+
+        }
+
+        else {
+
+            console.log(err);
+
+        }
+
+    });
+
+});
+
+// Mostrar una sola imagen 
+
+app.get('/imagen/:id', (req, res) =>{
+
+    const id = req.params.id;
+
+    mysqlConection.query('SELECT Imagen FROM files WHERE id = ?', id, (err, rows, fields) => {
+
+        [{Imagen}] = rows;
+
+        res.send({Imagen});
+
+    });
+
+});
+
+
 // Subir imágenes 
 
 app.post('/file', upload.single('file'), async(req, res, next) =>{
@@ -63,6 +103,47 @@ app.post('/file', upload.single('file'), async(req, res, next) =>{
     console.log(filesImg);
 
     mysqlConection.query('INSERT INTO files set ?', [filesImg]);
+
+});
+
+// Eliminar imágenes
+
+app.delete('/delete/:id', (req, res) => {
+
+    const {id} = req.params;
+    deleteFile(id);
+    mysqlConection.query('DELETE FROM files WHERE id = ?', [id]);
+    res.json({message: "Imagen eliminada correctamente"});
+
+});
+
+function deleteFile(id) {
+
+    mysqlConection.query('SELECT * FROM files WHERE id = ?', [id], (err, rows, fields) =>{
+
+        [{Imagen}] = rows;
+
+        fs.unlink(path.resolve('./'+ Imagen)).then(() => {
+
+            console.log('Imagen eliminada del servidor');
+
+        });
+
+    });
+
+}
+
+// Ingreso
+
+app.post('/auth/:id', (req, res) =>{
+
+    const id = req.params.id;
+
+    mysqlConection.query('SELECT id FROM files WHERE id = ?', id, (err, rows, fields) => {
+
+        res.send({message: 'Ingreso correcto'});
+
+    });
 
 });
 
